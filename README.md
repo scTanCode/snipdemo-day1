@@ -25,3 +25,10 @@ To update a layer, commit and push in its submodule, then run
 `git submodule update --remote <path>` in the superproject and commit the updated
 gitlink on `main`. Clone with `--recurse-submodules` or initialize submodules
 with `git submodule update --init --recursive`.
+
+The `bundle` submodule is generated: do not hand-edit it. Run
+`node scripts/build-bundle.mjs` to build it from the latest source branch tips
+and record their exact commits on `main`; run with `--push` to publish the bundle
+and its gitlinks. The script requires a clean checkout, Node and npm, and uses
+the frontend lockfile. Run `cd bundle && bun start` to serve the UI and API
+with one process, or `docker build -t snip bundle` to build the container.

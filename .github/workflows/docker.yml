@@ -1,0 +1,92 @@
+name: Build and push image
+on:
+  push:
+    branches: [main]
+    paths: [bundle, .github/workflows/docker.yml]
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: docker-main
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: '1'
+      - name: Verify CLI and frontend
+        run: |
+          npm test --prefix cli
+          npm ci --prefix frontend
+          npm run build --prefix frontend
+          cmp backend/server.js bundle/server.js
+          cmp cli/cli.js bundle/cli.js
+          diff -r frontend/dist/snip-frontend/browser bundle/public
+      - name: Check frontend dependencies
+        run: npm audit --prefix frontend --audit-level=high
+      - name: Verify bundle API and CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd bundle && PORT=3901 BASE_URL=http://localhost:3901 bun server.js) &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for n in {1..30}; do
+            if curl -fsS http://localhost:3901/ -o /tmp/snip-index; then break; fi
+            sleep 1
+          done
+          grep -q '<app-root>' /tmp/snip-index
+          result="$(curl -fsS -H 'content-type: application/json' -d '{"url":"https://example.com/"}' http://localhost:3901/api/links)"
+          code="$(echo "$result" | jq -r .code)"
+          test "${#code}" -eq 6
+          test "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:3901/$code")" = 302
+          curl -fsS http://localhost:3901/api/links | jq -e --arg code "$code" 'any(.[]; .code == $code and .hits == 1)' > /dev/null
+          SNIP_API=http://localhost:3901 node bundle/cli.js ls | grep -F "$code"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build image for scanning
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: ./bundle
+          load: true
+          tags: snip:verified
+      - name: Scan image
+        uses: aquasecurity/trivy-action@38b337fff0a2f984d5be173c99e3f633438167ec
+        with:
+          image-ref: snip:verified
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
+        id: metadata
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the scanned image
+        env:
+          TAGS: ${{ steps.metadata.outputs.tags }}
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            docker tag snip:verified "$tag"
+            docker push "$tag"
+          done <<< "$TAGS"

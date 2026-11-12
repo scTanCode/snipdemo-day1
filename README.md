@@ -32,3 +32,9 @@ and record their exact commits on `main`; run with `--push` to publish the bundl
 and its gitlinks. The script requires a clean checkout, Node and npm, and uses
 the frontend lockfile. Run `cd bundle && bun start` to serve the UI and API
 with one process, or `docker build -t snip bundle` to build the container.
+
+The hourly or manually dispatched bundle workflow updates the release. Its
+explicit image-workflow dispatch is needed because GitHub token pushes do not
+trigger push workflows. The image workflow verifies the pinned sources, checks
+dependencies, and scans the image before publishing it to GHCR. High or critical
+findings block publication. Node 22 is used in CI for Angular 19 compatibility.

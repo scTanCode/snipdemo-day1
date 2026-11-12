@@ -1,0 +1,22 @@
+.page { max-width: 860px; margin: 0 auto; padding: 3rem 1rem; }
+header { margin-bottom: 2rem; }
+header p { color: #536274; }
+.eyebrow { color: #3156be; font-weight: 800; letter-spacing: .14em; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); margin: .4rem 0; }
+h2 { font-size: 1.25rem; margin: 0 0 1rem; }
+.card { background: white; border: 1px solid #dce3ed; border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem; }
+label { display: block; font-weight: 600; margin-bottom: .5rem; }
+.form-row { display: flex; gap: .75rem; }
+input { flex: 1; min-width: 0; border: 1px solid #8795a7; border-radius: .5rem; padding: .8rem; font: inherit; }
+button { border: 0; border-radius: .5rem; background: #3156be; color: white; font: inherit; font-weight: 600; padding: .8rem 1rem; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+button.retry { background: transparent; color: #24479f; padding: .25rem; text-decoration: underline; }
+input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid #e08b00; outline-offset: 3px; }
+.error { color: #a21e2c; }
+#url-error:empty { display: none; }
+.success { color: #17633c; overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; text-align: left; }
+th, td { padding: .75rem; border-bottom: 1px solid #e3e8ef; vertical-align: top; }
+.original { overflow-wrap: anywhere; max-width: 28rem; }
+@media (max-width: 540px) { .form-row { flex-direction: column; } .card { padding: 1rem; } }
